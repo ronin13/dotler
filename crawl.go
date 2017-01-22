@@ -116,7 +116,7 @@ func getAllLinks(cancelParse context.Context, inPage *Page, reqChan chan *Page, 
 		glog.Infof("Failed to crawl %s", inPage.pageURL.String())
 		inPage.failCount++
 		if inPage.failCount <= maxFetchFail {
-			reqChan <- inPage
+			writeToChan(inPage, reqChan)
 		}
 		doneChan <- false
 		return

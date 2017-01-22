@@ -39,12 +39,12 @@ func BenchmarkCrawl(b *testing.B) {
 	flag.Lookup("alsologtostderr").Value.Set("false")
 	reqChan := make([]chan *Page, b.N)
 	dotChan := make([]chan *Page, b.N)
-	bUrl := "http://www.wnohang.net/pages/about/"
+	bURL := "http://www.wnohang.net/pages/about/"
 	for n := 0; n < b.N; n++ {
 		var wg sync.WaitGroup
 		reqChan[n] = make(chan *Page, MAXWORKERS)
 		dotChan[n] = make(chan *Page, MAXWORKERS)
-		parsedURL, _ := url.Parse(bUrl)
+		parsedURL, _ := url.Parse(bURL)
 		samplePage := &Page{pageURL: parsedURL}
 		wg.Add(1)
 		crawl(context.Background(), samplePage, reqChan[n], dotChan[n], &wg)

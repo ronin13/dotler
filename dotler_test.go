@@ -34,30 +34,30 @@ func TestDotler(t *testing.T) {
 	}
 }
 
-//func BenchmarkDotler(b *testing.B) {
-//flag.Lookup("alsologtostderr").Value.Set("false")
-//for n := 0; n < b.N; n++ {
-//idleTime = 1
-//clientTimeout = 1
-//code := startCrawl("http://wnohang.net")
-//if code > 0 {
-//b.Fatalf("Benchmark failed")
-//}
-//}
-//}
+func BenchmarkDotler(b *testing.B) {
+	flag.Lookup("alsologtostderr").Value.Set("false")
+	for n := 0; n < b.N; n++ {
+		idleTime = 1
+		clientTimeout = 1
+		code := startCrawl("http://wnohang.net")
+		if code > 0 {
+			b.Fatalf("Benchmark failed")
+		}
+	}
+}
 
-//func BenchmarkDotlerWithoutGen(b *testing.B) {
-//flag.Lookup("alsologtostderr").Value.Set("false")
-//idleTime = 1
-//clientTimeout = 1
-//genGraph = false
-//for n := 0; n < b.N; n++ {
-//code := startCrawl("http://wnohang.net")
-//if code > 0 {
-//b.Fatalf("Benchmark failed")
-//}
-//}
-//}
+func BenchmarkDotlerWithoutGen(b *testing.B) {
+	flag.Lookup("alsologtostderr").Value.Set("false")
+	idleTime = 1
+	clientTimeout = 1
+	genGraph = false
+	for n := 0; n < b.N; n++ {
+		code := startCrawl("http://wnohang.net")
+		if code > 0 {
+			b.Fatalf("Benchmark failed")
+		}
+	}
+}
 
 func TestMain(m *testing.M) {
 	os.Remove("dotler.dot")

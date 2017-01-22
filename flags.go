@@ -20,8 +20,8 @@ import (
 //        Generate an image of sitemap (implies gen-graph)
 //  -idle uint
 //        Idle timeout (default 100)
-//  -image-prog string
-//        If not empty, program to show the image (imples gen-graph and gen-image), chromium etc.
+//  -display-prog string
+//        If not empty, program to show the image (implies gen-graph and gen-image), chromium etc.
 //  -log_backtrace_at value
 //        when logging hits line file:N, emit a stack trace
 //  -log_dir string
@@ -54,7 +54,7 @@ func parseFlags() {
 
 	flag.BoolVar(&genImage, "gen-image", false, "Generate an image of sitemap (implies gen-graph), default false")
 	flag.BoolVar(&genGraph, "gen-graph", true, "Generate a graphviz graph")
-	flag.StringVar(&showProg, "image-prog", "", "If not empty, program to show the image (imples gen-graph and gen-image), chromium etc.")
+	flag.StringVar(&showProg, "display-prog", "", "If not empty, program to display the image (implies gen-graph and gen-image), chromium etc.")
 	flag.StringVar(&graphFormat, "format", "svg", "Format of generated image")
 
 	flag.Lookup("alsologtostderr").Value.Set("true")

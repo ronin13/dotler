@@ -25,5 +25,10 @@ clean:
 lint:
 	golint *.go
 
-doc:
+doc: pdf
 	godoc -http=:6060 -index
+
+pdf:
+	@pandoc README.md --latex-engine=xelatex -o README.pdf
+
+analyse: vet lint
