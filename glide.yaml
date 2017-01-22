@@ -1,0 +1,9 @@
+package: dotler
+import:
+- package: github.com/PuerkitoBio/goquery
+  version: ~1.0.2
+- package: github.com/awalterschulze/gographviz
+  version: ~1.0.0
+- package: github.com/golang/glog
+- package: github.com/PuerkitoBio/purell
+  version: ~1.1.0
