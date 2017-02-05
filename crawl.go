@@ -129,7 +129,7 @@ func getAllLinks(cancelParse context.Context, inPage *Page, reqChan chan *Page) 
 
 		successful := true
 
-		doc.Find("a, img, script, link, source").EachWithBreak(func(i int, item *goquery.Selection) {
+		doc.Find("a, img, script, link, source").EachWithBreak(func(i int, item *goquery.Selection) bool {
 			select {
 			case <-cancelParse.Done():
 				glog.Infof("Cancelling further processing here")
