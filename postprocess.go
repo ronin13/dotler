@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-func postProcess() {
+func postProcess() int {
 
 	var err error
 	var graphPipe io.WriteCloser
@@ -36,6 +36,7 @@ func postProcess() {
 	err = graphIt.Wait()
 	if err != nil {
 		glog.Fatalf("dotler.svg generation failed!")
+		return 1
 	}
 	if showProg != "" {
 		glog.Infof("Displaying image with %s", showProg)
@@ -47,6 +48,8 @@ func postProcess() {
 		err = showIt.Wait()
 		if err != nil {
 			glog.Fatalf("Display of image with %s failed", showProg)
+			return 1
 		}
 	}
+	return 0
 }

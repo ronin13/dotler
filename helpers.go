@@ -5,7 +5,7 @@
 package main
 
 import (
-	"github.com/golang/glog"
+	//"github.com/golang/glog"
 
 	"context"
 	"fmt"
@@ -24,7 +24,7 @@ func (node *NodeMap) RunLoop(stopLoop context.Context) {
 			log.Println("Exiting the loop")
 			return
 		case addPage := <-node.addChan:
-			if val, exists := pages[addPage.key]; exists {
+			if _, exists := pages[addPage.key]; exists {
 				//glog.Errorf("Key %s already exists, value %s", addPage.key, val)
 				addPage.err <- fmt.Errorf("Key exists")
 				continue
@@ -42,14 +42,21 @@ func (node *NodeMap) RunLoop(stopLoop context.Context) {
 
 }
 
+// Needed for http/https sites to create smaller graph.
+func httpStrip(input string) string {
+	return strings.Split(input, "//")[1]
+}
+
 func (node *NodeMap) Add(key string, value *Page) error {
-	sPage := &stringPage{key, value, make(chan error, 1)}
+	skey := httpStrip(key)
+	sPage := &stringPage{skey, value, make(chan error, 1)}
 	node.addChan <- sPage
 	return <-sPage.err
 }
 
 func (node *NodeMap) Exists(key string) *Page {
-	sPage := &existsPage{key: key, value: make(chan *Page, 1)}
+	skey := httpStrip(key)
+	sPage := &existsPage{key: skey, value: make(chan *Page, 1)}
 	node.checkChan <- sPage
 	return <-sPage.value
 }

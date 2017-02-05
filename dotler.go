@@ -9,6 +9,7 @@ import (
 	"github.com/golang/glog"
 
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -46,7 +47,6 @@ var (
 	crawlSkipped                            uint64
 	crawlCancelled                          uint64
 	printerChan                             chan struct{}
-	nodeMap                                 *NodeMap
 )
 
 var crawlGraph = gographviz.NewEscape()
@@ -125,7 +125,7 @@ func startCrawl(startURL string) int {
 	parentContext := context.Background()
 	noCrawl, terminate := context.WithCancel(parentContext)
 
-	nodeMap = &NodeMap{make(chan *stringPage, numThreads), make(chan *existsPage, numThreads)}
+	nodeMap := &NodeMap{make(chan *stringPage, numThreads), make(chan *existsPage, numThreads)}
 	go nodeMap.RunLoop(noCrawl)
 
 	sigs := make(chan os.Signal, 1)
@@ -135,7 +135,7 @@ func startCrawl(startURL string) int {
 
 	parsedURL, err = url.Parse(startURL)
 	if err != nil {
-		glog.Fatalf("Failed in parsing root url %s", err)
+		panic(fmt.Sprintf("Failed in parsing root url %s", err))
 	}
 	reqChan <- &Page{pageURL: parsedURL}
 
@@ -167,6 +167,8 @@ func startCrawl(startURL string) int {
 	go func() {
 		<-termChannel
 
+		status := 0
+
 		if crawlDone != nil {
 			crawlDone <- struct{}{}
 		}
@@ -191,9 +193,9 @@ func startCrawl(startURL string) int {
 		printStats()
 
 		if genImage {
-			postProcess()
+			status = postProcess()
 		}
-		extStatus <- 0
+		extStatus <- status
 
 	}()
 
