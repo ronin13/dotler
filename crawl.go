@@ -51,9 +51,9 @@ func updateAttr(item *goquery.Selection, inPage *Page, attribTypes []string, req
 			if !parsedURL.IsAbs() {
 				parsedURL = base.ResolveReference(parsedURL)
 			}
+			parsedURL.RawQuery = ""
+			parsedURL.Fragment = ""
 			if isStatic(parsedURL.String()) {
-				parsedURL.RawQuery = ""
-				parsedURL.Fragment = ""
 				if _, exists := inPage.statList[parsedURL.String()]; !exists {
 					statTitle = getStatTitle(parsedURL)
 					inPage.statList[parsedURL.String()] = StatPage{
@@ -62,8 +62,6 @@ func updateAttr(item *goquery.Selection, inPage *Page, attribTypes []string, req
 				}
 
 			} else if parsedURL.Host == base.Host {
-				parsedURL.RawQuery = ""
-				parsedURL.Fragment = ""
 
 				// Read lock should be cheap here.
 				nodeMap.RLock()
@@ -129,23 +127,26 @@ func getAllLinks(cancelParse context.Context, inPage *Page, reqChan chan *Page) 
 		doc, err := goquery.NewDocumentFromReader(strings.NewReader(body))
 		panicCrawl(err)
 
-		doc.Find("a, img, script, link, source").Each(func(i int, item *goquery.Selection) {
+		successful := true
+
+		doc.Find("a, img, script, link, source").EachWithBreak(func(i int, item *goquery.Selection) {
 			select {
 			case <-cancelParse.Done():
 				glog.Infof("Cancelling further processing here")
-				doneChan <- false
-				return
+				successful = false
+				return false
 			default:
 				err = updateAttr(item, inPage, []string{"href", "src"}, reqChan)
 				if err != nil {
 					glog.Infof("Skipping this - %s - page, probably bad", inPage.pageURL.String())
-					doneChan <- false
-					return
+					successful = false
+					return false
 				}
 			}
+			return true
 		})
 
-		doneChan <- true
+		doneChan <- successful
 	}()
 	return doneChan
 
