@@ -22,6 +22,7 @@ func TestDotlerCrawl(t *testing.T) {
 	}
 
 	for _, urls := range testURLs {
+
 		reqChan = make(chan *Page, MAXWORKERS)
 		dotChan = make(chan *Page, MAXWORKERS)
 		parsedURL, _ := url.Parse(urls.turl)
@@ -36,11 +37,13 @@ func TestDotlerCrawl(t *testing.T) {
 }
 
 func BenchmarkCrawl(b *testing.B) {
-	//flag.Lookup("alsologtostderr").Value.Set("false")
+
+	flag.Lookup("alsologtostderr").Value.Set("false")
 	reqChan := make([]chan *Page, b.N)
 	dotChan := make([]chan *Page, b.N)
 	bURL := "http://www.wnohang.net/pages/about/"
 	for n := 0; n < b.N; n++ {
+
 		var wg sync.WaitGroup
 		reqChan[n] = make(chan *Page, MAXWORKERS)
 		dotChan[n] = make(chan *Page, MAXWORKERS)

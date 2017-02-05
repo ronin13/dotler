@@ -30,23 +30,21 @@ const (
 )
 
 var (
-	rootURL                                 string
-	genImage                                bool
-	genGraph                                bool
-	numThreads                              int
-	graphFormat                             string
-	showProg                                string
-	clientTimeout, idleTime, crawlThreshold uint
-	domain                                  string
-	termChannel                             chan struct{}
-	crawlDone                               chan struct{}
-	reqChan, dotChan                        chan *Page
-	maxFetchFail                            uint
-	crawlSuccess                            uint64
-	crawlFail                               uint64
-	crawlSkipped                            uint64
-	crawlCancelled                          uint64
-	printerChan                             chan struct{}
+	rootURL                       string
+	genImage                      bool
+	genGraph                      bool
+	numThreads                    int
+	graphFormat                   string
+	showProg                      string
+	clientTimeout, crawlThreshold uint
+	domain                        string
+	termChannel                   chan struct{}
+	reqChan, dotChan              chan *Page
+	maxFetchFail                  uint
+	crawlSuccess                  uint64
+	crawlFail                     uint64
+	crawlSkipped                  uint64
+	crawlCancelled                uint64
 )
 
 var crawlGraph = gographviz.NewEscape()
@@ -96,7 +94,9 @@ func startCrawl(startURL string) int {
 	var once sync.Once
 	var wg sync.WaitGroup
 
-	crawlDone = make(chan struct{}, 2)
+	var printerChan chan struct{}
+
+	crawlDone := make(chan struct{}, 2)
 	reqChan = make(chan *Page, MAXWORKERS)
 	termChannel = make(chan struct{}, 2)
 
