@@ -79,7 +79,7 @@ func updateAttr(item *goquery.Selection, inPage *Page, attribTypes []string, req
 					// Title not known at this point
 					nPage = &Page{pageURL: parsedURL}
 
-					writeToChan(nPage, reqChan)
+					go writeToChan(nPage, reqChan)
 					updateOutLinksWithCard(parsedURL.String(), inPage, nPage)
 				}
 			} else {
@@ -107,43 +107,47 @@ func updateOutLinksWithCard(key string, iPage, nPage *Page) {
 // For attributes: href and src
 // Updates Page structure with static and outside links.
 // Uses goquery for parsing.
-func getAllLinks(cancelParse context.Context, inPage *Page, reqChan chan *Page, respChan chan *Page, doneChan chan bool) {
-	var err error
+func getAllLinks(cancelParse context.Context, inPage *Page, reqChan chan *Page) chan bool {
 
-	// getContent has a timeout - clientTimeout
-	body, err := getContent(inPage.pageURL)
-	if err != nil {
-		glog.Infof("Failed to crawl %s", inPage.pageURL.String())
-		inPage.failCount++
-		if inPage.failCount <= maxFetchFail {
-			writeToChan(inPage, reqChan)
-		}
-		doneChan <- false
-		return
-	}
+	doneChan := make(chan bool, 1)
 
-	inPage.outLinks = make(map[string]*PageWithCard)
-	inPage.statList = make(map[string]StatPage)
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(body))
-	panicCrawl(err)
-
-	doc.Find("a, img, script, link, source").Each(func(i int, item *goquery.Selection) {
-		select {
-		case <-cancelParse.Done():
-			glog.Infof("Cancelling further processing here")
+	go func() {
+		// getContent has a timeout - clientTimeout
+		body, err := getContent(inPage.pageURL)
+		if err != nil {
+			glog.Infof("Failed to crawl %s", inPage.pageURL.String())
+			inPage.failCount++
+			if inPage.failCount <= maxFetchFail {
+				go writeToChan(inPage, reqChan)
+			}
 			doneChan <- false
 			return
-		default:
-			err = updateAttr(item, inPage, []string{"href", "src"}, reqChan)
-			if err != nil {
-				glog.Infof("Skipping this - %s - page, probably bad", inPage.pageURL.String())
+		}
+
+		inPage.outLinks = make(map[string]*PageWithCard)
+		inPage.statList = make(map[string]StatPage)
+		doc, err := goquery.NewDocumentFromReader(strings.NewReader(body))
+		panicCrawl(err)
+
+		doc.Find("a, img, script, link, source").Each(func(i int, item *goquery.Selection) {
+			select {
+			case <-cancelParse.Done():
+				glog.Infof("Cancelling further processing here")
 				doneChan <- false
 				return
+			default:
+				err = updateAttr(item, inPage, []string{"href", "src"}, reqChan)
+				if err != nil {
+					glog.Infof("Skipping this - %s - page, probably bad", inPage.pageURL.String())
+					doneChan <- false
+					return
+				}
 			}
-		}
-	})
+		})
 
-	doneChan <- true
+		doneChan <- true
+	}()
+	return doneChan
 
 }
 
@@ -161,10 +165,8 @@ func crawl(cancelCrawl context.Context, inPage *Page, reqChan chan *Page, respCh
 	defer waiter.Done()
 	glog.Infof("Processing page %s", inPage.pageURL.String())
 
-	doneChan := make(chan bool, 1)
-
 	noParse, terminate := context.WithCancel(cancelCrawl)
-	go getAllLinks(noParse, inPage, reqChan, respChan, doneChan)
+	doneChan := getAllLinks(noParse, inPage, reqChan)
 
 	for {
 		select {
@@ -185,7 +187,7 @@ func crawl(cancelCrawl context.Context, inPage *Page, reqChan chan *Page, respCh
 			glog.Infof("Successfully crawled %s", inPage.pageURL.String())
 
 			if genGraph {
-				writeToChan(inPage, respChan)
+				go writeToChan(inPage, respChan)
 			}
 			return
 		case <-time.After(time.Second * time.Duration(crawlThreshold)):

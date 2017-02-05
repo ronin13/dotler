@@ -38,25 +38,33 @@ var (
 	showProg                                string
 	clientTimeout, idleTime, crawlThreshold uint
 	domain                                  string
-	termChannel                             = make(chan struct{}, 2)
+	termChannel                             chan struct{}
+	crawlDone                               chan struct{}
+	reqChan, dotChan                        chan *Page
 	maxFetchFail                            uint
 	crawlSuccess                            uint64
 	crawlFail                               uint64
 	crawlSkipped                            uint64
 	crawlCancelled                          uint64
+	printerChan                             chan struct{}
 )
 
 var crawlGraph = gographviz.NewEscape()
 
 // Signal handler!
 // a) SIGTERM/SIGINT - gracefully shuts down the server.
+// SIGINT - graceful
+// SIGTERM - without grace :)
 func handleSignal(schannel chan os.Signal) {
 	for {
 		signl := <-schannel
 		switch signl {
-		case syscall.SIGTERM:
 		case syscall.SIGINT:
+			<-crawlDone
+			fallthrough
+		case syscall.SIGTERM:
 			termChannel <- struct{}{}
+			crawlDone = nil
 			glog.Infoln("Time to leave and cleanup!")
 			return
 		}
@@ -92,6 +100,10 @@ func startCrawl(startURL string) int {
 	var parsedURL *url.URL
 	var endTime int64
 
+	crawlDone = make(chan struct{})
+	reqChan = make(chan *Page, MAXWORKERS)
+	termChannel = make(chan struct{}, 2)
+
 	if numThreads > 0 {
 		runtime.GOMAXPROCS(numThreads)
 	} else {
@@ -122,19 +134,22 @@ func startCrawl(startURL string) int {
 
 	defer wg.Wait()
 
-	reqChan := make(chan *Page, MAXWORKERS)
-	dotChan := make(chan *Page, MAXWORKERS)
-
 	parsedURL, err = url.Parse(startURL)
 	if err != nil {
 		glog.Fatalf("Failed in parsing root url %s", err)
 	}
 	reqChan <- &Page{pageURL: parsedURL}
+
 	if genGraph {
-		wg.Add(1)
-		go dotPrinter(dotChan, &wg)
+		dotChan = make(chan *Page, MAXWORKERS)
+		printerChan = dotPrinter(noCrawl, dotChan)
 	}
 	go handleSignal(sigs)
+
+	go func(crawlWait *sync.WaitGroup) {
+		crawlWait.Wait()
+		crawlDone <- struct{}{}
+	}(&wg)
 
 	startTime := time.Now().Unix()
 	glog.Infof("Starting crawl for %s at %s", startURL, time.Now().String())
@@ -142,22 +157,35 @@ func startCrawl(startURL string) int {
 	for {
 		select {
 		case inPage := <-reqChan:
-			wg.Add(1)
-			go crawl(noCrawl, inPage, reqChan, dotChan, &wg)
-		case <-time.After(time.Second * time.Duration(idleTime)):
-			glog.Infoln("Idle timeout reached, bye!")
-			endTime = time.Now().Unix() - int64(idleTime)
+			if inPage != nil {
+				wg.Add(1)
+				go crawl(noCrawl, inPage, reqChan, dotChan, &wg)
+			}
+		case <-crawlDone:
+			// Double check!
+			if len(reqChan) > 0 {
+				continue
+			} else {
+				reqChan = nil
+				crawlDone = nil
+			}
 			termChannel <- struct{}{}
+
 		case <-termChannel:
+			endTime = time.Now().Unix()
+			glog.Infof("Crawling %s took %d seconds", startURL, endTime-startTime)
+
 			terminate()
-			close(dotChan)
-			close(reqChan)
+			// Stops the dot printer.
+			// TODO: it is
+			// close(reqChan)
+			if genGraph {
+				close(dotChan)
+				<-printerChan
+			}
+			// This is safe.
 			wg.Wait()
 
-			if endTime == 0 {
-				endTime = time.Now().Unix()
-			}
-			glog.Infof("Crawling %s took %d seconds", startURL, endTime-startTime)
 			glog.Flush()
 			dotString := crawlGraph.String()
 

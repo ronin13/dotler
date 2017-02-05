@@ -12,9 +12,9 @@ package main
 import (
 	"github.com/golang/glog"
 
+	"context"
 	"fmt"
 	"strconv"
-	"sync"
 )
 
 // Adds a Page Node.
@@ -41,25 +41,38 @@ func staticNodes(iPage StatPage) string {
 // Runs till the inward channel closes, during shutdown.
 // Runs in parallel with crawler, silently weaving the graph
 // in background.
-func dotPrinter(inChan chan *Page, waiter *sync.WaitGroup) {
-	defer waiter.Done()
+func dotPrinter(noPrint context.Context, inChan chan *Page) (doneChan chan struct{}) {
+	dchan := make(chan struct{})
 	glog.Infoln("Starting the dot printer!")
 	var addedURL, presURL string
-	for iPage := range inChan {
-		presURL = addNoteFromAttr(iPage)
-		for _, oPage := range iPage.outLinks {
-			addedURL = addNoteFromAttr(oPage.page)
-			crawlGraph.AddEdge(presURL, addedURL, true, map[string]string{
-				"label": strconv.Itoa(int(oPage.card)),
-			})
-		}
+	go func() {
+		for {
+			select {
+			case iPage := <-inChan:
+				if iPage != nil {
+					presURL = addNoteFromAttr(iPage)
+					for _, oPage := range iPage.outLinks {
+						addedURL = addNoteFromAttr(oPage.page)
+						crawlGraph.AddEdge(presURL, addedURL, true, map[string]string{
+							"label": strconv.Itoa(int(oPage.card)),
+						})
+					}
 
-		for _, sPage := range iPage.statList {
-			addedURL = staticNodes(sPage)
-			crawlGraph.AddEdge(presURL, addedURL, true, map[string]string{
-				"style": "dashed",
-				"color": "blue",
-			})
+					for _, sPage := range iPage.statList {
+						addedURL = staticNodes(sPage)
+						crawlGraph.AddEdge(presURL, addedURL, true, map[string]string{
+							"style": "dashed",
+							"color": "blue",
+						})
+					}
+				}
+
+			case <-noPrint.Done():
+				dchan <- struct{}{}
+				glog.Infoln("Halting the dot printer!")
+				return
+			}
 		}
-	}
+	}()
+	return dchan
 }
