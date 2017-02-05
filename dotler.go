@@ -9,6 +9,7 @@ import (
 	"github.com/golang/glog"
 
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -29,39 +30,32 @@ const (
 )
 
 var (
-	rootURL                                 string
-	genImage                                bool
-	genGraph                                bool
-	numThreads                              int
-	graphFormat                             string
-	showProg                                string
-	clientTimeout, idleTime, crawlThreshold uint
-	domain                                  string
-	termChannel                             chan struct{}
-	crawlDone                               chan struct{}
-	reqChan, dotChan                        chan *Page
-	maxFetchFail                            uint
-	crawlSuccess                            uint64
-	crawlFail                               uint64
-	crawlSkipped                            uint64
-	crawlCancelled                          uint64
-	printerChan                             chan struct{}
+	rootURL                       string
+	genImage                      bool
+	genGraph                      bool
+	numThreads                    int
+	graphFormat                   string
+	showProg                      string
+	clientTimeout, crawlThreshold uint
+	domain                        string
+	termChannel                   chan struct{}
+	reqChan, dotChan              chan *Page
+	maxFetchFail                  uint
+	crawlSuccess                  uint64
+	crawlFail                     uint64
+	crawlSkipped                  uint64
+	crawlCancelled                uint64
 )
 
 var crawlGraph = gographviz.NewEscape()
 
 // Signal handler!
 // a) SIGTERM/SIGINT - gracefully shuts down the server.
-// SIGINT - graceful
-// SIGTERM - without grace :)
 func handleSignal(schannel chan os.Signal) {
 	for {
 		signl := <-schannel
 		switch signl {
-		case syscall.SIGINT:
-			<-crawlDone
-			fallthrough
-		case syscall.SIGTERM:
+		case syscall.SIGTERM, syscall.SIGINT:
 			termChannel <- struct{}{}
 			glog.Infoln("Time to leave and cleanup!")
 			return
@@ -100,7 +94,9 @@ func startCrawl(startURL string) int {
 	var once sync.Once
 	var wg sync.WaitGroup
 
-	crawlDone = make(chan struct{})
+	var printerChan chan struct{}
+
+	crawlDone := make(chan struct{}, 2)
 	reqChan = make(chan *Page, MAXWORKERS)
 	termChannel = make(chan struct{}, 2)
 
@@ -136,7 +132,7 @@ func startCrawl(startURL string) int {
 
 	parsedURL, err = url.Parse(startURL)
 	if err != nil {
-		glog.Fatalf("Failed in parsing root url %s", err)
+		panic(fmt.Sprintf("Failed in parsing root url %s", err))
 	}
 	reqChan <- &Page{pageURL: parsedURL}
 
@@ -168,6 +164,11 @@ func startCrawl(startURL string) int {
 	go func() {
 		<-termChannel
 
+		status := 0
+
+		if crawlDone != nil {
+			crawlDone <- struct{}{}
+		}
 		terminate()
 		// Stops the dot printer.
 		// TODO: it is
@@ -189,9 +190,9 @@ func startCrawl(startURL string) int {
 		printStats()
 
 		if genImage {
-			postProcess()
+			status = postProcess()
 		}
-		extStatus <- 0
+		extStatus <- status
 
 	}()
 
@@ -209,11 +210,16 @@ func startCrawl(startURL string) int {
 			reqChan = nil
 			crawlDone = nil
 			termChannel <- struct{}{}
-			return <-extStatus
+			//return <-extStatus
 
+		}
+
+		if reqChan == nil && crawlDone == nil {
+			break
 		}
 	}
 	return <-extStatus
+
 }
 
 func main() {

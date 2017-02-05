@@ -18,8 +18,6 @@ import (
 //        Generate a graphviz graph (default true)
 //  -gen-image
 //        Generate an image of sitemap (implies gen-graph)
-//  -idle uint
-//        Idle timeout (default 100)
 //  -display-prog string
 //        If not empty, program to show the image (implies gen-graph and gen-image), chromium etc.
 //  -log_backtrace_at value
@@ -47,7 +45,6 @@ import (
 func parseFlags() {
 	flag.StringVar(&rootURL, "url", "http://www.wnohang.net/", "Url to crawl")
 	flag.UintVar(&clientTimeout, "timeout", 60, "Timeout in seconds")
-	flag.UintVar(&idleTime, "idle", 100, "Idle timeout")
 	flag.UintVar(&maxFetchFail, "retry", 2, "Number of failures to tolerate if http fetch fails")
 	flag.UintVar(&crawlThreshold, "max-crawl", 10, "Timeout in seconds to scrape and process a single page")
 	flag.IntVar(&numThreads, "max-threads", 0, "Number of goroutines, defaults to NumCPU")

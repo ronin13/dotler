@@ -7,19 +7,18 @@ import (
 )
 
 var urlTests = []struct {
-	turl                string
-	idle, clientTimeout uint
+	turl          string
+	clientTimeout uint
 }{
-	{"http://wnohang.net", 5, 10},
-	{"https://gobyexample.com/", 4, 20},
-	{"https://blog.golang.org", 4, 20},
-	{"https://blog.wnohang.net", 4, 20},
+	{"http://wnohang.net", 10},
+	{"https://gobyexample.com/", 20},
+	{"https://blog.golang.org", 20},
+	{"https://blog.wnohang.net", 20},
 }
 
 func TestDotler(t *testing.T) {
 	flag.Lookup("alsologtostderr").Value.Set("false")
 	for _, testURL := range urlTests {
-		idleTime = testURL.idle
 		clientTimeout = testURL.clientTimeout
 		code := startCrawl(testURL.turl)
 		if code != 0 {
@@ -37,7 +36,6 @@ func TestDotler(t *testing.T) {
 func BenchmarkDotler(b *testing.B) {
 	flag.Lookup("alsologtostderr").Value.Set("false")
 	for n := 0; n < b.N; n++ {
-		idleTime = 1
 		clientTimeout = 1
 		code := startCrawl("http://wnohang.net")
 		if code > 0 {
@@ -48,7 +46,6 @@ func BenchmarkDotler(b *testing.B) {
 
 func BenchmarkDotlerWithoutGen(b *testing.B) {
 	flag.Lookup("alsologtostderr").Value.Set("false")
-	idleTime = 1
 	clientTimeout = 1
 	genGraph = false
 	for n := 0; n < b.N; n++ {

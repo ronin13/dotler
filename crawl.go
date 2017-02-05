@@ -77,7 +77,8 @@ func updateAttr(item *goquery.Selection, inPage *Page, attribTypes []string, req
 					// Title not known at this point
 					nPage = &Page{pageURL: parsedURL}
 
-					go writeToChan(nPage, reqChan)
+					//TODO: go writeToChan?
+					writeToChan(nPage, reqChan)
 					updateOutLinksWithCard(parsedURL.String(), inPage, nPage)
 				}
 			} else {
@@ -116,7 +117,8 @@ func getAllLinks(cancelParse context.Context, inPage *Page, reqChan chan *Page) 
 			glog.Infof("Failed to crawl %s", inPage.pageURL.String())
 			inPage.failCount++
 			if inPage.failCount <= maxFetchFail {
-				go writeToChan(inPage, reqChan)
+				//TODO: go writeToChan?
+				writeToChan(inPage, reqChan)
 			}
 			doneChan <- false
 			return
@@ -188,7 +190,8 @@ func crawl(cancelCrawl context.Context, inPage *Page, reqChan chan *Page, respCh
 			glog.Infof("Successfully crawled %s", inPage.pageURL.String())
 
 			if genGraph {
-				go writeToChan(inPage, respChan)
+				//TODO: go writeToChan?
+				writeToChan(inPage, respChan)
 			}
 			return
 		case <-time.After(time.Second * time.Duration(crawlThreshold)):
