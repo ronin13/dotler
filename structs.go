@@ -6,7 +6,6 @@ package main
 
 import (
 	"net/url"
-	"sync"
 )
 
 // StatPage maintains
@@ -37,9 +36,21 @@ type Page struct {
 	failCount uint
 }
 
+type stringPage struct {
+	key   string
+	value *Page
+	err   chan error
+}
+
+type existsPage struct {
+	key   string
+	value chan *Page
+}
+
 // A NodeMap which is protected by RWMutex.
 // Used to ensure we don't process a page twice.
 type NodeMap struct {
-	pages map[string]*Page
-	sync.RWMutex
+	//pages map[string]*Page - not exposed.
+	addChan   chan *stringPage
+	checkChan chan *existsPage
 }

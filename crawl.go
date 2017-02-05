@@ -21,7 +21,7 @@ import (
 // Iterates over attributes, parses the page,
 // gets URLs from same domain, gets static assets
 // sends new links onto reqChan.
-func updateAttr(item *goquery.Selection, inPage *Page, attribTypes []string, reqChan chan *Page) error {
+func updateAttr(item *goquery.Selection, inPage *Page, attribTypes []string, reqChan chan *Page, nodes *NodeMap) error {
 
 	var nPage *Page
 	var err error
@@ -51,9 +51,9 @@ func updateAttr(item *goquery.Selection, inPage *Page, attribTypes []string, req
 			if !parsedURL.IsAbs() {
 				parsedURL = base.ResolveReference(parsedURL)
 			}
+			parsedURL.RawQuery = ""
+			parsedURL.Fragment = ""
 			if isStatic(parsedURL.String()) {
-				parsedURL.RawQuery = ""
-				parsedURL.Fragment = ""
 				if _, exists := inPage.statList[parsedURL.String()]; !exists {
 					statTitle = getStatTitle(parsedURL)
 					inPage.statList[parsedURL.String()] = StatPage{
@@ -65,13 +65,12 @@ func updateAttr(item *goquery.Selection, inPage *Page, attribTypes []string, req
 				parsedURL.RawQuery = ""
 				parsedURL.Fragment = ""
 
-				// Read lock should be cheap here.
-				nodeMap.RLock()
-				nPage, exists = nodeMap.pages[parsedURL.String()]
-				nodeMap.RUnlock()
+				glog.Infof("Checking for %s", parsedURL.String())
+				nPage = nodes.Exists(parsedURL.String())
 
 				// Already processed
-				if exists {
+				if nPage != nil {
+					glog.Infof("Page already exists %s", nPage.pageURL.String())
 					updateOutLinksWithCard(parsedURL.String(), inPage, nPage)
 				} else {
 					// New discovery!
@@ -107,7 +106,7 @@ func updateOutLinksWithCard(key string, iPage, nPage *Page) {
 // For attributes: href and src
 // Updates Page structure with static and outside links.
 // Uses goquery for parsing.
-func getAllLinks(cancelParse context.Context, inPage *Page, reqChan chan *Page) chan bool {
+func getAllLinks(cancelParse context.Context, inPage *Page, reqChan chan *Page, nodes *NodeMap) chan bool {
 
 	doneChan := make(chan bool, 1)
 
@@ -129,23 +128,27 @@ func getAllLinks(cancelParse context.Context, inPage *Page, reqChan chan *Page) 
 		doc, err := goquery.NewDocumentFromReader(strings.NewReader(body))
 		panicCrawl(err)
 
-		doc.Find("a, img, script, link, source").Each(func(i int, item *goquery.Selection) {
+		successful := true
+
+		doc.Find("a, img, script, link, source").EachWithBreak(func(i int, item *goquery.Selection) bool {
 			select {
 			case <-cancelParse.Done():
 				glog.Infof("Cancelling further processing here")
-				doneChan <- false
-				return
+				successful = false
+				return false
 			default:
-				err = updateAttr(item, inPage, []string{"href", "src"}, reqChan)
+				err = updateAttr(item, inPage, []string{"href", "src"}, reqChan, nodes)
 				if err != nil {
 					glog.Infof("Skipping this - %s - page, probably bad", inPage.pageURL.String())
-					doneChan <- false
-					return
+					successful = false
+					return false
 				}
 			}
+			return true
 		})
 
-		doneChan <- true
+		doneChan <- successful
+
 	}()
 	return doneChan
 
@@ -159,14 +162,18 @@ func getAllLinks(cancelParse context.Context, inPage *Page, reqChan chan *Page) 
 // Uses respChan for graph rendering.
 // Also has a timeout of crawlThreshold.
 // Uses a new child context noParse - used to terminate parsing.
-func crawl(cancelCrawl context.Context, inPage *Page, reqChan chan *Page, respChan chan *Page, waiter *sync.WaitGroup) {
+func crawl(cancelCrawl context.Context, inPage *Page, reqChan chan *Page, respChan chan *Page, waiter *sync.WaitGroup, nodes *NodeMap) {
 
-	updNodeMap(inPage.pageURL.String(), inPage)
 	defer waiter.Done()
+	if err := nodes.Add(inPage.pageURL.String(), inPage); err != nil {
+		glog.Errorf("Possible duplicate addition %s", inPage.pageURL.String())
+		return
+	}
+
 	glog.Infof("Processing page %s", inPage.pageURL.String())
 
 	noParse, terminate := context.WithCancel(cancelCrawl)
-	doneChan := getAllLinks(noParse, inPage, reqChan)
+	doneChan := getAllLinks(noParse, inPage, reqChan, nodes)
 
 	for {
 		select {

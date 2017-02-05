@@ -29,7 +29,6 @@ const (
 )
 
 var (
-	wg                                      sync.WaitGroup // To make sure we don't leave any handlers behind!
 	rootURL                                 string
 	genImage                                bool
 	genGraph                                bool
@@ -47,6 +46,7 @@ var (
 	crawlSkipped                            uint64
 	crawlCancelled                          uint64
 	printerChan                             chan struct{}
+	nodeMap                                 *NodeMap
 )
 
 var crawlGraph = gographviz.NewEscape()
@@ -64,7 +64,6 @@ func handleSignal(schannel chan os.Signal) {
 			fallthrough
 		case syscall.SIGTERM:
 			termChannel <- struct{}{}
-			crawlDone = nil
 			glog.Infoln("Time to leave and cleanup!")
 			return
 		}
@@ -99,6 +98,8 @@ func startCrawl(startURL string) int {
 	var err error
 	var parsedURL *url.URL
 	var endTime int64
+	var once sync.Once
+	var wg sync.WaitGroup
 
 	crawlDone = make(chan struct{})
 	reqChan = make(chan *Page, MAXWORKERS)
@@ -129,6 +130,9 @@ func startCrawl(startURL string) int {
 	parentContext := context.Background()
 	noCrawl, terminate := context.WithCancel(parentContext)
 
+	nodeMap = &NodeMap{make(chan *stringPage, 1), make(chan *existsPage, 1)}
+	go nodeMap.RunLoop(noCrawl)
+
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
@@ -146,65 +150,75 @@ func startCrawl(startURL string) int {
 	}
 	go handleSignal(sigs)
 
-	go func(crawlWait *sync.WaitGroup) {
-		crawlWait.Wait()
-		crawlDone <- struct{}{}
-	}(&wg)
+	waitChan := make(chan struct{})
+	go func() {
+		for {
+			<-waitChan
+			wg.Wait()
+			if len(reqChan) > 0 {
+				continue
+			} else {
+				crawlDone <- struct{}{}
+				return
+			}
+		}
+	}()
 
 	startTime := time.Now().Unix()
 	glog.Infof("Starting crawl for %s at %s", startURL, time.Now().String())
+
+	extStatus := make(chan int, 1)
+
+	go func() {
+		<-termChannel
+
+		terminate()
+		// Stops the dot printer.
+		// TODO: it is
+		// close(reqChan)
+		if genGraph {
+			<-printerChan
+			close(dotChan)
+		}
+		// This is safe.
+		wg.Wait()
+
+		glog.Flush()
+		dotString := crawlGraph.String()
+
+		err = ioutil.WriteFile("dotler.dot", []byte(dotString), 0644)
+		panicCrawl(err)
+		glog.Infof("We are done, phew!, persisting graph to dotler.dot\n")
+
+		printStats()
+
+		if genImage {
+			postProcess()
+		}
+		extStatus <- 0
+
+	}()
 
 	for {
 		select {
 		case inPage := <-reqChan:
 			if inPage != nil {
 				wg.Add(1)
-				go crawl(noCrawl, inPage, reqChan, dotChan, &wg)
+				go crawl(noCrawl, inPage, reqChan, dotChan, &wg, nodeMap)
+				once.Do(func() { close(waitChan) })
 			}
 		case <-crawlDone:
-			// Double check!
-			if len(reqChan) > 0 {
-				continue
-			} else {
-				reqChan = nil
-				crawlDone = nil
-			}
-			termChannel <- struct{}{}
-
-		case <-termChannel:
 			endTime = time.Now().Unix()
 			glog.Infof("Crawling %s took %d seconds", startURL, endTime-startTime)
+			reqChan = nil
+			crawlDone = nil
+			termChannel <- struct{}{}
+			return <-extStatus
 
-			terminate()
-			// Stops the dot printer.
-			// TODO: it is
-			// close(reqChan)
-			if genGraph {
-				close(dotChan)
-				<-printerChan
-			}
-			// This is safe.
-			wg.Wait()
-
-			glog.Flush()
-			dotString := crawlGraph.String()
-
-			err = ioutil.WriteFile("dotler.dot", []byte(dotString), 0644)
-			panicCrawl(err)
-			glog.Infof("We are done, phew!, persisting graph to dotler.dot\n")
-
-			printStats()
-
-			if genImage {
-				postProcess()
-			}
-
-			return 0
 		}
 	}
-	// Avoiding 'unreachable code' from go vet.
-	// Was added just to be a failsafe.
-	// return 0
+	return <-extStatus
+
 }
 
 func main() {
