@@ -25,7 +25,7 @@ func (node *NodeMap) RunLoop(stopLoop context.Context) {
 			return
 		case addPage := <-node.addChan:
 			if val, exists := pages[addPage.key]; exists {
-				glog.Errorf("Key %s already exists, value %s", addPage.key, val)
+				//glog.Errorf("Key %s already exists, value %s", addPage.key, val)
 				addPage.err <- fmt.Errorf("Key exists")
 				continue
 			}

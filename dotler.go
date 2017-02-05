@@ -53,16 +53,11 @@ var crawlGraph = gographviz.NewEscape()
 
 // Signal handler!
 // a) SIGTERM/SIGINT - gracefully shuts down the server.
-// SIGINT - graceful
-// SIGTERM - without grace :)
 func handleSignal(schannel chan os.Signal) {
 	for {
 		signl := <-schannel
 		switch signl {
-		case syscall.SIGINT:
-			<-crawlDone
-			fallthrough
-		case syscall.SIGTERM:
+		case syscall.SIGTERM, syscall.SIGINT:
 			termChannel <- struct{}{}
 			glog.Infoln("Time to leave and cleanup!")
 			return
@@ -101,7 +96,7 @@ func startCrawl(startURL string) int {
 	var once sync.Once
 	var wg sync.WaitGroup
 
-	crawlDone = make(chan struct{})
+	crawlDone = make(chan struct{}, 2)
 	reqChan = make(chan *Page, MAXWORKERS)
 	termChannel = make(chan struct{}, 2)
 
@@ -130,7 +125,7 @@ func startCrawl(startURL string) int {
 	parentContext := context.Background()
 	noCrawl, terminate := context.WithCancel(parentContext)
 
-	nodeMap = &NodeMap{make(chan *stringPage, 1), make(chan *existsPage, 1)}
+	nodeMap = &NodeMap{make(chan *stringPage, numThreads), make(chan *existsPage, numThreads)}
 	go nodeMap.RunLoop(noCrawl)
 
 	sigs := make(chan os.Signal, 1)
@@ -172,6 +167,9 @@ func startCrawl(startURL string) int {
 	go func() {
 		<-termChannel
 
+		if crawlDone != nil {
+			crawlDone <- struct{}{}
+		}
 		terminate()
 		// Stops the dot printer.
 		// TODO: it is
@@ -213,8 +211,12 @@ func startCrawl(startURL string) int {
 			reqChan = nil
 			crawlDone = nil
 			termChannel <- struct{}{}
-			return <-extStatus
+			//return <-extStatus
 
+		}
+
+		if reqChan == nil && crawlDone == nil {
+			break
 		}
 	}
 	return <-extStatus
