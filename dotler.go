@@ -83,7 +83,7 @@ func printStats() {
 	glog.Infoln("===========================================")
 }
 
-func setup() {
+func setup() int {
 	if numThreads > 0 {
 		runtime.GOMAXPROCS(numThreads)
 	} else {
@@ -95,7 +95,7 @@ func setup() {
 	}
 	if genImage {
 		genGraph = true
-		if _, err = exec.LookPath("dot"); err != nil {
+		if _, err := exec.LookPath("dot"); err != nil {
 			glog.Infoln("Need dot (from graphviz) in PATH for image generation")
 			return 2
 		}
@@ -103,6 +103,7 @@ func setup() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go handleSignal(sigs)
+	return 0
 
 }
 
@@ -123,7 +124,10 @@ func startCrawl(startURL string) int {
 	reqChan = make(chan *Page, MAXWORKERS)
 	termChannel = make(chan struct{}, 2)
 
-	setup()
+	setupErr := setup()
+	if setupErr != 0 {
+		return setupErr
+	}
 
 	crawlGraph.SetName("dotler")
 	crawlGraph.SetDir(true)
