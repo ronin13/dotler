@@ -26,7 +26,8 @@ const (
 	// MAXWORKERS is a internal constant for channel capacity, should be enough mostly.
 	MAXWORKERS = 100
 	// STATICTYPES defines extensions we consider to be 'static' when processing a page.
-	STATICTYPES = `\.(jpg|gif|bmp|jpeg|png|svg|mp3|mp4|flv|js|css|webm|ogg|flac|wav|ico)$`
+	// Also add rss|xml|atom
+	STATICTYPES = `\.(jpg|gif|bmp|jpeg|png|svg|mp3|mp4|flv|js|css|webm|ogg|flac|wav|ico|atom|rss|xml)$`
 )
 
 var (
