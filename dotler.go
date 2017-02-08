@@ -83,6 +83,29 @@ func printStats() {
 	glog.Infoln("===========================================")
 }
 
+func setup() {
+	if numThreads > 0 {
+		runtime.GOMAXPROCS(numThreads)
+	} else {
+		runtime.GOMAXPROCS(runtime.NumCPU())
+	}
+	if showProg != "" {
+		glog.Infoln("Turning on gen-image")
+		genImage = true
+	}
+	if genImage {
+		genGraph = true
+		if _, err = exec.LookPath("dot"); err != nil {
+			glog.Infoln("Need dot (from graphviz) in PATH for image generation")
+			return 2
+		}
+	}
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go handleSignal(sigs)
+
+}
+
 // Main function with deferred processing in case of return with code.
 // Basic functions such as signal processing. setup and main loop.
 // Exits during shutdown or when idle time is reached, and then waits.
@@ -100,33 +123,14 @@ func startCrawl(startURL string) int {
 	reqChan = make(chan *Page, MAXWORKERS)
 	termChannel = make(chan struct{}, 2)
 
-	if numThreads > 0 {
-		runtime.GOMAXPROCS(numThreads)
-	} else {
-		runtime.GOMAXPROCS(runtime.NumCPU())
-	}
+	setup()
 
 	crawlGraph.SetName("dotler")
 	crawlGraph.SetDir(true)
 	crawlGraph.SetStrict(true)
 
-	if showProg != "" {
-		glog.Infoln("Turning on gen-image")
-		genImage = true
-	}
-	if genImage {
-		genGraph = true
-		if _, err = exec.LookPath("dot"); err != nil {
-			glog.Infoln("Need dot (from graphviz) in PATH for image generation")
-			return 2
-		}
-	}
-
 	parentContext := context.Background()
 	noCrawl, terminate := context.WithCancel(parentContext)
-
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 	defer wg.Wait()
 
@@ -140,7 +144,6 @@ func startCrawl(startURL string) int {
 		dotChan = make(chan *Page, MAXWORKERS)
 		printerChan = dotPrinter(noCrawl, dotChan)
 	}
-	go handleSignal(sigs)
 
 	waitChan := make(chan struct{})
 	go func() {
