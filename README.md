@@ -1,4 +1,5 @@
-
+[![Go Report Card](https://goreportcard.com/badge/github.com/ronin13/dotler)](https://goreportcard.com/report/github.com/ronin13/dotler)
+[![Build Status](https://travis-ci.org/ronin13/dotler.svg?branch=master)](https://travis-ci.org/ronin13/dotler)
 
 # Dotler
 
