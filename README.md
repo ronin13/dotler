@@ -247,4 +247,3 @@ It is also attached to the PDF for quick view.
 -  github.com/Masterminds/glide
 -  github.com/awalterschulze/gographviz
 
-## Sample attachment for http://wnohang.net
