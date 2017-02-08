@@ -1,4 +1,5 @@
-
+[![Go Report Card](https://goreportcard.com/badge/github.com/ronin13/dotler)](https://goreportcard.com/report/github.com/ronin13/dotler)
+[![Build Status](https://travis-ci.org/ronin13/dotler.svg?branch=master)](https://travis-ci.org/ronin13/dotler)
 
 # Dotler
 
@@ -246,4 +247,3 @@ It is also attached to the PDF for quick view.
 -  github.com/Masterminds/glide
 -  github.com/awalterschulze/gographviz
 
-## Sample attachment for http://wnohang.net

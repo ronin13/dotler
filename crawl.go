@@ -62,8 +62,6 @@ func updateAttr(item *goquery.Selection, inPage *Page, attribTypes []string, req
 				}
 
 			} else if parsedURL.Host == base.Host {
-				parsedURL.RawQuery = ""
-				parsedURL.Fragment = ""
 
 				nPage = nodes.Exists(parsedURL.String())
 
