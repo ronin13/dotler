@@ -1,0 +1,10 @@
+language: go
+
+go:
+  - 1.7.5
+  - master
+
+install: make dep
+
+script:
+    make test
