@@ -1,13 +1,19 @@
-.PHONY: all dotler vet test clean lint race bench
+.PHONY: all dotler vet test clean lint race bench dep
+
+# Credit: https://github.com/rightscale/go-boilerplate/blob/master/Makefile
+DEPEND=golang.org/x/tools/cmd/cover github.com/Masterminds/glide github.com/golang/lint/golint
+
+dep:
+	go get -u -v $(DEPEND)
+	glide install
 
 all: dotler
 
-dotler: vet
+dotler: dep vet
 	go build -v -o dotler
 
 vet: lint
 	go vet *.go
-
 
 test: dotler
 	go test -v .
@@ -15,12 +21,11 @@ test: dotler
 bench: dotler
 	go test -v -run=XXX -bench=. -benchtime=60s
 
-race:
-	go run -race dotler.go
+race: dep
+	go build -race -v -o dotler
 
 clean:
 	@rm -f dotler
-
 
 lint:
 	golint *.go
