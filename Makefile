@@ -4,31 +4,31 @@
 DEPEND=golang.org/x/tools/cmd/cover github.com/Masterminds/glide github.com/golang/lint/golint
 
 dep:
-	go get -u -v $(DEPEND)
+	go get -u $(DEPEND)
 	glide install
 
 all: dotler
 
 dotler: dep vet
-	go build -v -o dotler
+	go build -v -o build/dotler
 
 vet: lint
-	go vet *.go
+	go vet ./dotler ./tests
 
-test: dotler
-	go test -v .
+test: dep
+	cd tests && go test -v .
 
-bench: dotler
-	go test -v -run=XXX -bench=. -benchtime=60s
+bench: dep
+	cd tests && go test -v -run=XXX -bench=. -benchtime=60s
 
 race: dep
-	go build -race -v -o dotler
+	go build -race -v -o build/dotler.race
 
 clean:
-	@rm -f dotler
+	@rm -f build/dotler build/dotler.race
 
 lint:
-	golint *.go
+	golint dotler tests
 
 doc: pdf
 	godoc -http=:6060 -index

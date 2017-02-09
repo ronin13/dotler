@@ -21,13 +21,13 @@ Algorithm is as follows:
 1) Get the root url.
 2) Send to request Channel.
 3) Iterate over request Channel and dispatch urls from it to crawl goroutine until
-    i) idle timeout - needed since crawling cannot be considered to halt deterministically. Hence, if there are no new urls in request Channel after idle timeout, we leave.
-    ii) SIGINT / SIGTERM are sent.
+    i) SIGINT / SIGTERM are sent.
+    ii) All the urls in the domain have been crawled and all goroutines are idle.
 4) During shutdown, we persist the graphviz to a .dot file, generate SVG if required and show the image as well.
 
 ### crawl goroutine (crawler.go)
 
-1) Update a map - nodeMap - (with RW lock) to ensure we don't duplicate process page.
+1) Update a map implementing NodeMapper interface to ensure we don't duplicate process page.
 2) Get all links on the page, goquery is used for this purpose.
     i) Unless the link is already processed, send it to request Channel if it is part of same domain.
     ii) Update this pages map of static assets and links originating from this page.
@@ -47,12 +47,11 @@ Algorithm is as follows:
 1) Channels are used for communication between crawling goroutines (which are many and capped at MAXWORKERS at a time), dotprinter (which is one) and main function.
     - Also used for signalling shutdown and completion of work and with contexts.
 2) Contexts with Cancel are used to cancel, timeout channels and timeouts are also used wherever necessary.
-3) For the nodeMap, the contention is low since it is only added to and never updated again. Hence, a RW lock is used.
-4) Each crawling goroutine itself uses a timeout - crawlThreshold - if a page is taking too long.
-5) Statistics are printed during shutdown.
-6) A signal handler (for shutdown) sends signal on termChannel which does cleanup, persist graph among other things.
-7) Each page is tried maxFetchFail (default 2) times in case of failure.
-8) Wait groups are used to wait on goroutines
+3) Each crawling goroutine itself uses a timeout - crawlThreshold - if a page is taking too long.
+4) Statistics are printed during shutdown.
+5) A signal handler (for shutdown) sends signal on termChannel which does cleanup, persist graph among other things.
+6) Each page is tried maxFetchFail (default 2) times in case of failure.
+7) Wait groups are used to wait on goroutines
 
 ### Core data structure
 
@@ -60,7 +59,7 @@ Algorithm is as follows:
 type Page struct {
 	statList  map[string]StatPage
 	outLinks  map[string]*PageWithCard
-	pageURL   *url.URL
+	PageURL   *url.URL
 	failCount uint
 }
 ```
@@ -70,7 +69,7 @@ This is the structure passed around in channels for request and graph processing
 
 1) statList is a map of static assets from this page.
 2) outLinks is a map of Page links from this page. PageWithCard is a struct with cardinality of links to it.
-3) pageURL is the url of the page.
+3) PageURL is the url of the page.
 4) failCount is the number of times this page crawling can fail.
 
 ## Races
@@ -80,7 +79,7 @@ Every attempt has been made to eliminate race conditions.
 make race 
 ```
 
-runs with race detector.
+builds with race detector.
 
 ## Example
 
@@ -125,14 +124,14 @@ Note: For testing and other reasons, one can also fully turn off graph generatio
 ### Showing image
 
 ```
-./dotler  -idle 15 -max-crawl 30 -gen-image -image-prog='chromium'
+./dotler  -max-crawl 30 -gen-image -image-prog='chromium'
 ```
 
 ### With url
 
 ```
 ./dotler -url 'https://gobyexample.com/'  -idle 10
-./dotler  -idle 10 -max-crawl 30  -url 'http://blog.golang.org'
+./dotler  -max-crawl 30  -url 'http://blog.golang.org'
 ```
 
 ### Example execution with complete log for a larger site.
@@ -232,11 +231,9 @@ It is also attached to the PDF for quick view.
 - It runs quite fast. :)
 
 - In the logs, look for a line like:
- " Crawling http://blog.golang.org took 8 seconds "
+ " Crawling http://XXXXX took 8 seconds "
 
-- Typically for small sites like http://wnohang.net it will show 0 or 1. Important to note that it subtracts the idle timeout.
-
-- Note that this is only the crawling time (minus idle time) excluding any post processing time to persist the graph, generate SVG or show the image.
+- Note that this is only the crawling time excluding any post processing time to persist the graph, generate SVG or show the image.
 
 - Benchmarks (from make bench) include the entire time.
 

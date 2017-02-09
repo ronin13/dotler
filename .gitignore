@@ -1,5 +1,5 @@
 vendor/
-dotler
+build/*
 *.o
 *.a
 *.so
