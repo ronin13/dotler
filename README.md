@@ -13,6 +13,10 @@ graph.
 It also crawls only within its domain, and 
 maintains a map of any static assets from a page.
 
+Generated graph looks like:
+
+![wnohang](images/wnohang.svg)
+
 Algorithm is as follows:
 (Skipping implementation details)
 
@@ -131,7 +135,7 @@ Note: For testing and other reasons, one can also fully turn off graph generatio
 ### With url
 
 ```
-./dotler -url 'https://gobyexample.com/'  -idle 10
+./dotler -url 'https://blog.wnohang.net'  -idle 10
 ./dotler  -idle 10 -max-crawl 30  -url 'http://blog.golang.org'
 ```
 
@@ -241,9 +245,9 @@ It is also attached to the PDF for quick view.
 - Benchmarks (from make bench) include the entire time.
 
 ## Credits
--  github.com/PuerkitoBio/goquery 
--  github.com/PuerkitoBio/purell
--  github.com/golang/glog
--  github.com/Masterminds/glide
--  github.com/awalterschulze/gographviz
+-  https://github.com/PuerkitoBio/goquery 
+-  https://github.com/PuerkitoBio/purell
+-  https://github.com/golang/glog
+-  https://github.com/Masterminds/glide
+-  https://github.com/awalterschulze/gographviz
 
