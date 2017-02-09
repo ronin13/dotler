@@ -1,6 +1,9 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/ronin13/dotler)](https://goreportcard.com/report/github.com/ronin13/dotler)
 [![Build Status](https://travis-ci.org/ronin13/dotler.svg?branch=master)](https://travis-ci.org/ronin13/dotler)
 
+[![license](http://img.shields.io/badge/license-GPL2-blue.svg)](https://raw.githubusercontent.com/ronin13/dotler/master/LICENSE.md)
+[![GoDoc](https://godoc.org/github.com/ronin13/dotler?status.svg)](https://godoc.org/github.com/ronin13/dotler)
+
 # Dotler
 
 ## Introduction
@@ -247,4 +250,5 @@ It is also attached to the PDF for quick view.
 -  https://github.com/golang/glog
 -  https://github.com/Masterminds/glide
 -  https://github.com/awalterschulze/gographviz
+-  https://github.com/derekparker/delve/
 
