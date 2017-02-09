@@ -15,7 +15,7 @@ maintains a map of any static assets from a page.
 
 Generated graph looks like:
 
-![wnohang](images/wnohang.svg)
+![wnohang](images/wnohang.png)
 
 Algorithm is as follows:
 (Skipping implementation details)
