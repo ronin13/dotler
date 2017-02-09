@@ -3,6 +3,7 @@ language: go
 go:
   - 1.7.5
   - master
+  - tip
 
 install: make dep
 
