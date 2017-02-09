@@ -1,5 +1,7 @@
 vendor/
 build/*
+tests/*.dot
+*.dot
 *.o
 *.a
 *.so
