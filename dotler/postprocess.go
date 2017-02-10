@@ -1,3 +1,6 @@
+// Copyright 2017 Raghavendra Prabhu.
+// Refer to LICENSE for more
+
 package dotler
 
 // Responsible for post-processing such as generation of SVG
