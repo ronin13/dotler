@@ -87,23 +87,7 @@ func printStats() {
 	glog.Infoln("===========================================")
 }
 
-// StartCrawl is the main function with deferred processing in case of return with code.
-// Basic functions such as signal processing. setup and main loop.
-// Exits during shutdown or when idle time is reached, and then waits.
-// The main loop queries the reqChan and dispatches crawl function repeatedly.
-func StartCrawl(startURL string) int {
-	var err error
-	var parsedURL *url.URL
-	var endTime int64
-	var once sync.Once
-	var wg sync.WaitGroup
-	var nodeMap wire.NodeMapper
-
-	var printerChan wire.GraphProcessor
-
-	crawlDone := make(chan struct{}, 2)
-	reqChan = make(chan *wire.Page, MAXWORKERS)
-	termChannel = make(chan struct{}, 2)
+func setup() {
 
 	if numThreads > 0 {
 		runtime.GOMAXPROCS(numThreads)
@@ -122,6 +106,27 @@ func StartCrawl(startURL string) int {
 			return 2
 		}
 	}
+}
+
+// StartCrawl is the main function with deferred processing in case of return with code.
+// Basic functions such as signal processing. setup and main loop.
+// Exits during shutdown or when idle time is reached, and then waits.
+// The main loop queries the reqChan and dispatches crawl function repeatedly.
+func StartCrawl(startURL string) int {
+	var err error
+	var parsedURL *url.URL
+	var endTime int64
+	var once sync.Once
+	var wg sync.WaitGroup
+	var nodeMap wire.NodeMapper
+
+	var printerChan wire.GraphProcessor
+
+	crawlDone := make(chan struct{}, 2)
+	reqChan = make(chan *wire.Page, MAXWORKERS)
+	termChannel = make(chan struct{}, 2)
+
+	setup()
 
 	parentContext := context.Background()
 	noCrawl, terminate := context.WithCancel(parentContext)
