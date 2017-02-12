@@ -1,12 +1,13 @@
 // Copyright 2017 Raghavendra Prabhu.
 // Refer to LICENSE for more
 
-// Core dotler file. Entrypoint.
+// Package dotler entrypoint.
 package dotler
 
 import (
-	"github.com/awalterschulze/gographviz"
 	"github.com/golang/glog"
+	processor "github.com/ronin13/dotler/processor"
+	wire "github.com/ronin13/dotler/wire"
 
 	"context"
 	"fmt"
@@ -31,24 +32,26 @@ const (
 )
 
 var (
-	RootURL                       string
-	genImage                      bool
-	genGraph                      bool
-	numThreads                    int
-	graphFormat                   string
-	showProg                      string
-	ClientTimeout, crawlThreshold uint
-	domain                        string
-	termChannel                   chan struct{}
-	reqChan, dotChan              chan *Page
-	maxFetchFail                  uint
-	crawlSuccess                  uint64
-	crawlFail                     uint64
-	crawlSkipped                  uint64
-	crawlCancelled                uint64
-)
+	// RootURL is the base URL to crawl from.
+	RootURL     string
+	genImage    bool
+	genGraph    bool
+	numThreads  int
+	graphFormat string
+	showProg    string
 
-var crawlGraph = gographviz.NewEscape()
+	// ClientTimeout is the http timeout.
+	ClientTimeout    uint
+	crawlThreshold   uint
+	domain           string
+	termChannel      chan struct{}
+	reqChan, dotChan chan *wire.Page
+	maxFetchFail     uint
+	crawlSuccess     uint64
+	crawlFail        uint64
+	crawlSkipped     uint64
+	crawlCancelled   uint64
+)
 
 // Signal handler!
 // a) SIGTERM/SIGINT - gracefully shuts down the server.
@@ -84,32 +87,13 @@ func printStats() {
 	glog.Infoln("===========================================")
 }
 
-// Main function with deferred processing in case of return with code.
-// Basic functions such as signal processing. setup and main loop.
-// Exits during shutdown or when idle time is reached, and then waits.
-// The main loop queries the reqChan and dispatches crawl function repeatedly.
-func StartCrawl(startURL string) int {
-	var err error
-	var parsedURL *url.URL
-	var endTime int64
-	var once sync.Once
-	var wg sync.WaitGroup
-
-	var printerChan chan struct{}
-
-	crawlDone := make(chan struct{}, 2)
-	reqChan = make(chan *Page, MAXWORKERS)
-	termChannel = make(chan struct{}, 2)
+func setup() {
 
 	if numThreads > 0 {
 		runtime.GOMAXPROCS(numThreads)
 	} else {
 		runtime.GOMAXPROCS(runtime.NumCPU())
 	}
-
-	crawlGraph.SetName("dotler")
-	crawlGraph.SetDir(true)
-	crawlGraph.SetStrict(true)
 
 	if showProg != "" {
 		glog.Infoln("Turning on gen-image")
@@ -122,11 +106,32 @@ func StartCrawl(startURL string) int {
 			return 2
 		}
 	}
+}
+
+// StartCrawl is the main function with deferred processing in case of return with code.
+// Basic functions such as signal processing. setup and main loop.
+// Exits during shutdown or when idle time is reached, and then waits.
+// The main loop queries the reqChan and dispatches crawl function repeatedly.
+func StartCrawl(startURL string) int {
+	var err error
+	var parsedURL *url.URL
+	var endTime int64
+	var once sync.Once
+	var wg sync.WaitGroup
+	var nodeMap wire.NodeMapper
+
+	var printerChan wire.GraphProcessor
+
+	crawlDone := make(chan struct{}, 2)
+	reqChan = make(chan *wire.Page, MAXWORKERS)
+	termChannel = make(chan struct{}, 2)
+
+	setup()
 
 	parentContext := context.Background()
 	noCrawl, terminate := context.WithCancel(parentContext)
 
-	nodeMap := &NodeMap{make(chan *stringPage, numThreads), make(chan *existsPage, numThreads)}
+	nodeMap = wire.NewNodeMapper(numThreads)
 	go nodeMap.RunLoop(noCrawl)
 
 	sigs := make(chan os.Signal, 1)
@@ -138,11 +143,12 @@ func StartCrawl(startURL string) int {
 	if err != nil {
 		panic(fmt.Sprintf("Failed in parsing root url %s", err))
 	}
-	reqChan <- &Page{PageURL: parsedURL}
+	reqChan <- &wire.Page{PageURL: parsedURL}
 
 	if genGraph {
-		dotChan = make(chan *Page, MAXWORKERS)
-		printerChan = dotPrinter(noCrawl, dotChan)
+		dotChan = make(chan *wire.Page, MAXWORKERS)
+		printerChan = processor.NewPrinter()
+		printerChan.ProcessLoop(noCrawl, dotChan)
 	}
 	go handleSignal(sigs)
 
@@ -167,6 +173,7 @@ func StartCrawl(startURL string) int {
 
 	go func() {
 		<-termChannel
+		var dotString string
 
 		status := 0
 
@@ -174,27 +181,25 @@ func StartCrawl(startURL string) int {
 			crawlDone <- struct{}{}
 		}
 		terminate()
-		// Stops the dot printer.
-		// TODO: it is
-		// close(reqChan)
 		if genGraph {
-			<-printerChan
+			dotString = <-printerChan.Result()
 			close(dotChan)
 		}
 		// This is safe.
 		wg.Wait()
 
 		glog.Flush()
-		dotString := crawlGraph.String()
 
-		err = ioutil.WriteFile("dotler.dot", []byte(dotString), 0644)
-		panicCrawl(err)
-		glog.Infof("We are done, phew!, persisting graph to dotler.dot\n")
+		if genGraph {
+			err = ioutil.WriteFile("dotler.dot", []byte(dotString), 0644)
+			panicCrawl(err)
+			glog.Infof("We are done, phew!, persisting graph to dotler.dot\n")
+		}
 
 		printStats()
 
 		if genImage {
-			status = postProcess()
+			status = postProcess(dotString)
 		}
 		extStatus <- status
 
@@ -214,7 +219,6 @@ func StartCrawl(startURL string) int {
 			reqChan = nil
 			crawlDone = nil
 			termChannel <- struct{}{}
-			//return <-extStatus
 
 		}
 
