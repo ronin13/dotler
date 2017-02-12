@@ -87,7 +87,7 @@ func printStats() {
 	glog.Infoln("===========================================")
 }
 
-func setup() int {
+func setup() {
 
 	if numThreads > 0 {
 		runtime.GOMAXPROCS(numThreads)
@@ -103,10 +103,9 @@ func setup() int {
 		genGraph = true
 		if _, err := exec.LookPath("dot"); err != nil {
 			glog.Infoln("Need dot (from graphviz) in PATH for image generation")
-			return 2
+			os.Exit(2)
 		}
 	}
-	return 0
 }
 
 // StartCrawl is the main function with deferred processing in case of return with code.
@@ -127,10 +126,7 @@ func StartCrawl(startURL string) int {
 	reqChan = make(chan *wire.Page, MAXWORKERS)
 	termChannel = make(chan struct{}, 2)
 
-	setupStatus := setup()
-	if setupStatus > 0 {
-		return setupStatus
-	}
+	setup()
 
 	parentContext := context.Background()
 	noCrawl, terminate := context.WithCancel(parentContext)
