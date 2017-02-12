@@ -2,9 +2,10 @@
 // Refer to LICENSE for more
 
 // All the structs we use for crawler.
-package dotler
+package wire
 
 import (
+	"context"
 	"net/url"
 )
 
@@ -12,16 +13,16 @@ import (
 // - pageTitle: Title of page
 // - staticURL: URL of page.
 type StatPage struct {
-	pageTitle string
-	staticURL *url.URL
+	PageTitle string
+	StaticURL *url.URL
 }
 
 // PageWithCard is a struct which encapsulates a Page with its cardinality.
 // A page can have multiple links to another single page
 // card here is cardinality - number of links to that page.
 type PageWithCard struct {
-	page *Page
-	card uint
+	Page *Page
+	Card uint
 }
 
 // Page maintains:
@@ -30,16 +31,16 @@ type PageWithCard struct {
 // - pageURL:  URL structure
 // - failCount: number of times this page is tried
 type Page struct {
-	statList  map[string]StatPage
-	outLinks  map[string]*PageWithCard
+	StatList  map[string]StatPage
+	OutLinks  map[string]*PageWithCard
 	PageURL   *url.URL
-	failCount uint
+	FailCount uint
 }
 
 type stringPage struct {
 	key   string
 	value *Page
-	err   chan error
+	Err   chan error
 }
 
 type existsPage struct {
@@ -53,4 +54,15 @@ type NodeMap struct {
 	//pages map[string]*Page - not exposed.
 	addChan   chan *stringPage
 	checkChan chan *existsPage
+}
+
+type GraphProcessor interface {
+	ProcessLoop(context.Context, chan *Page)
+	Result() chan string
+}
+
+type NodeMapper interface {
+	Exists(string) *Page
+	Add(string, *Page) error
+	RunLoop(context.Context)
 }

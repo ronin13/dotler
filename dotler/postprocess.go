@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-func postProcess() int {
+func postProcess(result string) int {
 
 	var err error
 	var graphPipe io.WriteCloser
@@ -31,7 +31,7 @@ func postProcess() int {
 
 	panicCrawl(graphIt.Start())
 
-	_, err = graphPipe.Write([]byte(crawlGraph.String()))
+	_, err = graphPipe.Write([]byte(result))
 	panicCrawl(err)
 
 	panicCrawl(graphPipe.Close())

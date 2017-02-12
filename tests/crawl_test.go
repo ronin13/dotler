@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"github.com/ronin13/dotler/dotler"
+	"github.com/ronin13/dotler/wire"
 	"net/url"
 	"sync"
 	"testing"
@@ -12,11 +13,11 @@ import (
 type NodeMap struct {
 }
 
-func (node *NodeMap) Add(key string, value *dotler.Page) error {
+func (node *NodeMap) Add(key string, value *wire.Page) error {
 	return nil
 }
 
-func (node *NodeMap) Exists(key string) *dotler.Page {
+func (node *NodeMap) Exists(key string) *wire.Page {
 	return nil
 }
 
@@ -30,7 +31,7 @@ func TestDotlerCrawl(t *testing.T) {
 
 	flag.Lookup("alsologtostderr").Value.Set("false")
 	var wg sync.WaitGroup
-	var reqChan, dotChan chan *dotler.Page
+	var reqChan, dotChan chan *wire.Page
 	testURLs := []struct {
 		turl      string
 		linkCount int
@@ -41,10 +42,10 @@ func TestDotlerCrawl(t *testing.T) {
 
 	for _, urls := range testURLs {
 
-		reqChan = make(chan *dotler.Page, dotler.MAXWORKERS)
-		dotChan = make(chan *dotler.Page, dotler.MAXWORKERS)
+		reqChan = make(chan *wire.Page, dotler.MAXWORKERS)
+		dotChan = make(chan *wire.Page, dotler.MAXWORKERS)
 		parsedURL, _ := url.Parse(urls.turl)
-		samplePage := &dotler.Page{PageURL: parsedURL}
+		samplePage := &wire.Page{PageURL: parsedURL}
 		wg.Add(1)
 		dotler.Crawl(context.Background(), samplePage, reqChan, dotChan, &wg, nd)
 		wg.Wait()
@@ -58,16 +59,16 @@ func BenchmarkCrawl(b *testing.B) {
 
 	nd := &NodeMap{}
 	flag.Lookup("alsologtostderr").Value.Set("false")
-	reqChan := make([]chan *dotler.Page, b.N)
-	dotChan := make([]chan *dotler.Page, b.N)
+	reqChan := make([]chan *wire.Page, b.N)
+	dotChan := make([]chan *wire.Page, b.N)
 	bURL := "http://www.wnohang.net/pages/about/"
 	for n := 0; n < b.N; n++ {
 
 		var wg sync.WaitGroup
-		reqChan[n] = make(chan *dotler.Page, dotler.MAXWORKERS)
-		dotChan[n] = make(chan *dotler.Page, dotler.MAXWORKERS)
+		reqChan[n] = make(chan *wire.Page, dotler.MAXWORKERS)
+		dotChan[n] = make(chan *wire.Page, dotler.MAXWORKERS)
 		parsedURL, _ := url.Parse(bURL)
-		samplePage := &dotler.Page{PageURL: parsedURL}
+		samplePage := &wire.Page{PageURL: parsedURL}
 		wg.Add(1)
 		dotler.Crawl(context.Background(), samplePage, reqChan[n], dotChan[n], &wg, nd)
 		wg.Wait()

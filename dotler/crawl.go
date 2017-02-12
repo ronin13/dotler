@@ -9,6 +9,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/PuerkitoBio/purell"
 	"github.com/golang/glog"
+	wire "github.com/ronin13/dotler/wire"
 
 	"context"
 	"net/url"
@@ -21,9 +22,9 @@ import (
 // Iterates over attributes, parses the page,
 // gets URLs from same domain, gets static assets
 // sends new links onto reqChan.
-func updateAttr(item *goquery.Selection, inPage *Page, attribTypes []string, reqChan chan *Page, nodes NodeMapper) error {
+func updateAttr(item *goquery.Selection, inPage *wire.Page, attribTypes []string, reqChan chan *wire.Page, nodes wire.NodeMapper) error {
 
-	var nPage *Page
+	var nPage *wire.Page
 	var err error
 	var statTitle string
 	var parsedURL *url.URL
@@ -54,11 +55,11 @@ func updateAttr(item *goquery.Selection, inPage *Page, attribTypes []string, req
 			parsedURL.RawQuery = ""
 			parsedURL.Fragment = ""
 			if isStatic(parsedURL.String()) {
-				if _, exists := inPage.statList[parsedURL.String()]; !exists {
+				if _, exists := inPage.StatList[parsedURL.String()]; !exists {
 					statTitle = getStatTitle(parsedURL)
-					inPage.statList[parsedURL.String()] = StatPage{
-						staticURL: parsedURL,
-						pageTitle: statTitle}
+					inPage.StatList[parsedURL.String()] = wire.StatPage{
+						StaticURL: parsedURL,
+						PageTitle: statTitle}
 				}
 
 			} else if parsedURL.Host == base.Host {
@@ -72,7 +73,7 @@ func updateAttr(item *goquery.Selection, inPage *Page, attribTypes []string, req
 					// New discovery!
 
 					// Title not known at this point
-					nPage = &Page{PageURL: parsedURL}
+					nPage = &wire.Page{PageURL: parsedURL}
 
 					//TODO: go writeToChan?
 					writeToChan(nPage, reqChan)
@@ -89,12 +90,12 @@ func updateAttr(item *goquery.Selection, inPage *Page, attribTypes []string, req
 	return nil
 }
 
-func updateOutLinksWithCard(key string, iPage, nPage *Page) {
+func updateOutLinksWithCard(key string, iPage, nPage *wire.Page) {
 
-	if _, exists := iPage.outLinks[key]; exists {
-		iPage.outLinks[key].card++
+	if _, exists := iPage.OutLinks[key]; exists {
+		iPage.OutLinks[key].Card++
 	} else {
-		iPage.outLinks[key] = &PageWithCard{page: nPage, card: 1}
+		iPage.OutLinks[key] = &wire.PageWithCard{Page: nPage, Card: 1}
 	}
 }
 
@@ -103,7 +104,7 @@ func updateOutLinksWithCard(key string, iPage, nPage *Page) {
 // For attributes: href and src
 // Updates Page structure with static and outside links.
 // Uses goquery for parsing.
-func getAllLinks(cancelParse context.Context, inPage *Page, reqChan chan *Page, nodes NodeMapper) chan bool {
+func getAllLinks(cancelParse context.Context, inPage *wire.Page, reqChan chan *wire.Page, nodes wire.NodeMapper) chan bool {
 
 	doneChan := make(chan bool, 1)
 
@@ -112,8 +113,8 @@ func getAllLinks(cancelParse context.Context, inPage *Page, reqChan chan *Page, 
 		body, err := getContent(inPage.PageURL)
 		if err != nil {
 			glog.Infof("Failed to crawl %s", inPage.PageURL.String())
-			inPage.failCount++
-			if inPage.failCount <= maxFetchFail {
+			inPage.FailCount++
+			if inPage.FailCount <= maxFetchFail {
 				//TODO: go writeToChan?
 				writeToChan(inPage, reqChan)
 			}
@@ -121,8 +122,8 @@ func getAllLinks(cancelParse context.Context, inPage *Page, reqChan chan *Page, 
 			return
 		}
 
-		inPage.outLinks = make(map[string]*PageWithCard)
-		inPage.statList = make(map[string]StatPage)
+		inPage.OutLinks = make(map[string]*wire.PageWithCard)
+		inPage.StatList = make(map[string]wire.StatPage)
 		doc, err := goquery.NewDocumentFromReader(strings.NewReader(body))
 		panicCrawl(err)
 
@@ -160,7 +161,7 @@ func getAllLinks(cancelParse context.Context, inPage *Page, reqChan chan *Page, 
 // Uses respChan for graph rendering.
 // Also has a timeout of crawlThreshold.
 // Uses a new child context noParse - used to terminate parsing.
-func Crawl(cancelCrawl context.Context, inPage *Page, reqChan chan *Page, respChan chan *Page, waiter *sync.WaitGroup, nodes NodeMapper) {
+func Crawl(cancelCrawl context.Context, inPage *wire.Page, reqChan chan *wire.Page, respChan chan *wire.Page, waiter *sync.WaitGroup, nodes wire.NodeMapper) {
 
 	defer waiter.Done()
 	if err := nodes.Add(inPage.PageURL.String(), inPage); err != nil {
