@@ -1,7 +1,7 @@
 // Copyright 2017 Raghavendra Prabhu.
 // Refer to LICENSE for more
 
-// Core dotler file. Entrypoint.
+// Package dotler entrypoint.
 package dotler
 
 import (
@@ -32,21 +32,25 @@ const (
 )
 
 var (
-	RootURL                       string
-	genImage                      bool
-	genGraph                      bool
-	numThreads                    int
-	graphFormat                   string
-	showProg                      string
-	ClientTimeout, crawlThreshold uint
-	domain                        string
-	termChannel                   chan struct{}
-	reqChan, dotChan              chan *wire.Page
-	maxFetchFail                  uint
-	crawlSuccess                  uint64
-	crawlFail                     uint64
-	crawlSkipped                  uint64
-	crawlCancelled                uint64
+	// RootURL is the base URL to crawl from.
+	RootURL     string
+	genImage    bool
+	genGraph    bool
+	numThreads  int
+	graphFormat string
+	showProg    string
+
+	// ClientTimeout is the http timeout.
+	ClientTimeout    uint
+	crawlThreshold   uint
+	domain           string
+	termChannel      chan struct{}
+	reqChan, dotChan chan *wire.Page
+	maxFetchFail     uint
+	crawlSuccess     uint64
+	crawlFail        uint64
+	crawlSkipped     uint64
+	crawlCancelled   uint64
 )
 
 // Signal handler!
@@ -83,7 +87,7 @@ func printStats() {
 	glog.Infoln("===========================================")
 }
 
-// Main function with deferred processing in case of return with code.
+// StartCrawl is the main function with deferred processing in case of return with code.
 // Basic functions such as signal processing. setup and main loop.
 // Exits during shutdown or when idle time is reached, and then waits.
 // The main loop queries the reqChan and dispatches crawl function repeatedly.

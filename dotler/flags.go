@@ -1,14 +1,14 @@
 // Copyright 2017 Raghavendra Prabhu.
 // Refer to LICENSE for more
 
-// Flag parsing.
+// Package dotler 's flag parsing.
 package dotler
 
 import (
 	"flag"
 )
 
-// Parsing all flags.
+// ParseFlags provides parsing of all the flags.
 // Usage of ./dotler:
 //  -alsologtostderr
 //        log to standard error as well as files

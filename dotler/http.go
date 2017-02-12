@@ -1,7 +1,7 @@
 // Copyright 2017 Raghavendra Prabhu.
 // Refer to LICENSE for more
 
-// http related functions.
+// Package dotler http related functions.
 package dotler
 
 import (

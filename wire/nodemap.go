@@ -6,10 +6,12 @@ import (
 	"strings"
 )
 
+// NewNodeMapper returns a new instance of implementing NodeMapper interface.
 func NewNodeMapper(numThreads int) NodeMapper {
 	return &NodeMap{make(chan *stringPage, numThreads), make(chan *existsPage, numThreads)}
 }
 
+// RunLoop is the NodeMapper's map requests processing loop.
 func (node *NodeMap) RunLoop(stopLoop context.Context) {
 
 	pages := make(map[string]*Page)
@@ -41,6 +43,8 @@ func httpStrip(input string) string {
 	return strings.Split(input, "//")[1]
 }
 
+// Add method allows one to add new keys.
+// Returns error.
 func (node *NodeMap) Add(key string, value *Page) error {
 	skey := httpStrip(key)
 	sPage := &stringPage{skey, value, make(chan error, 1)}
@@ -48,6 +52,7 @@ func (node *NodeMap) Add(key string, value *Page) error {
 	return <-sPage.Err
 }
 
+// Exists method allows to check and return the key.
 func (node *NodeMap) Exists(key string) *Page {
 	skey := httpStrip(key)
 	sPage := &existsPage{key: skey, value: make(chan *Page, 1)}

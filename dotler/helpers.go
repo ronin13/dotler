@@ -1,7 +1,7 @@
 // Copyright 2017 Raghavendra Prabhu.
 // Refer to LICENSE for more
 
-// Helper functions used.
+// Package dotler helper functions.
 package dotler
 
 import (

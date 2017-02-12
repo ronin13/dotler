@@ -1,7 +1,8 @@
 // Copyright 2017 Raghavendra Prabhu.
 // Refer to LICENSE for more
 
-// Responsible for generating graphviz graph
+// Package processor has logic
+// responsible for generating graphviz graph
 // concurrently when crawling is being done.
 // Persisted only towards end.
 // Gets the input from another channel to
@@ -45,6 +46,7 @@ type dotPrinter struct {
 	result chan string
 }
 
+// NewPrinter returns a new instance implementing the GraphProcessor interface.
 func NewPrinter() wire.GraphProcessor {
 	dPrinter := new(dotPrinter)
 	dPrinter.cgraph = gographviz.NewEscape()

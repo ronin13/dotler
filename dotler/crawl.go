@@ -153,7 +153,7 @@ func getAllLinks(cancelParse context.Context, inPage *wire.Page, reqChan chan *w
 
 }
 
-// Core crawl function called from main.
+// Crawl is the core crawl function called from main.
 // Uses getAllLinks for actual processing.
 // updNodeMap to ensure nodes processed successfully are not revisited.
 // Gets two channels - reqChan and respChan.

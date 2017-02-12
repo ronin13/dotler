@@ -1,7 +1,7 @@
 // Copyright 2017 Raghavendra Prabhu.
 // Refer to LICENSE for more
 
-// All the structs we use for crawler.
+// Package wire has all the structs and interfaces we use for crawler.
 package wire
 
 import (
@@ -56,11 +56,14 @@ type NodeMap struct {
 	checkChan chan *existsPage
 }
 
+// GraphProcessor exposes graph processing interface for
+// pages crawled by crawler.
 type GraphProcessor interface {
 	ProcessLoop(context.Context, chan *Page)
 	Result() chan string
 }
 
+// NodeMapper implements the lockless map interface for use by crawler.
 type NodeMapper interface {
 	Exists(string) *Page
 	Add(string, *Page) error

@@ -13,7 +13,7 @@ dotler: dep vet
 	go build -v -o build/dotler
 
 vet: lint
-	go vet ./dotler ./tests
+	go vet ./dotler ./tests ./processor ./wire
 
 test: dep
 	cd tests && go test -v .
