@@ -131,8 +131,8 @@ func StartCrawl(startURL string) int {
 	parentContext := context.Background()
 	noCrawl, terminate := context.WithCancel(parentContext)
 
-	nodeMap = wire.NewNodeMapper(numThreads)
-	go nodeMap.RunLoop(noCrawl)
+	nodeMap, cFunc := wire.NewNodeMapper(parentContext)
+	defer cFunc()
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)

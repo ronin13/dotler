@@ -1,5 +1,5 @@
 hash: a61af0050849ea31f5a47f19cff929bfffcbfb3a10073e172c70271ef332f888
-updated: 2017-01-22T18:56:01.969067276Z
+updated: 2017-02-16T13:06:20.862189129Z
 imports:
 - name: github.com/andybalholm/cascadia
   version: 349dd0209470eabd9514242c688c403c0926d266
@@ -18,6 +18,8 @@ imports:
   version: 0bcb03f4b4d0a9428594752bd2a3b9aa0a9d4bd4
 - name: github.com/PuerkitoBio/urlesc
   version: 5bd2802263f21d8788851d5305584c82a5c75d7e
+- name: github.com/ronin13/goimutmap
+  version: a03619030013754fe4ae842326bc756d2aee6b08
 - name: golang.org/x/net
   version: f2499483f923065a842d38eb4c7f1927e6fc6e6d
   subpackages:

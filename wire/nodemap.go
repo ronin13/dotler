@@ -3,39 +3,15 @@ package wire
 import (
 	"context"
 	"fmt"
+	gmap "github.com/ronin13/goimutmap"
 	"strings"
 )
 
 // NewNodeMapper returns a new instance of implementing NodeMapper interface.
-func NewNodeMapper(numThreads int) NodeMapper {
-	return &NodeMap{make(chan *stringPage, numThreads), make(chan *existsPage, numThreads)}
-}
+func NewNodeMapper(ctx context.Context) (NodeMapper, context.CancelFunc) {
 
-// RunLoop is the NodeMapper's map requests processing loop.
-func (node *NodeMap) RunLoop(stopLoop context.Context) {
-
-	pages := make(map[string]*Page)
-	for {
-		select {
-		case <-stopLoop.Done():
-			return
-		case addPage := <-node.addChan:
-			if _, exists := pages[addPage.key]; exists {
-				//glog.Errorf("key %s already exists, value %s", addPage.key, val)
-				addPage.Err <- fmt.Errorf("key exists")
-				continue
-			}
-			pages[addPage.key] = addPage.value
-			addPage.Err <- nil
-		case checkPage := <-node.checkChan:
-			if value, exists := pages[checkPage.key]; exists {
-				checkPage.value <- value
-			} else {
-				checkPage.value <- nil
-			}
-		}
-	}
-
+	mapper, cFunc := gmap.NewcontextMapper(ctx)
+	return &NodeMap{mapper}, cFunc
 }
 
 // Needed for http/https sites to create smaller graph.
@@ -47,15 +23,23 @@ func httpStrip(input string) string {
 // Returns error.
 func (node *NodeMap) Add(key string, value *Page) error {
 	skey := httpStrip(key)
-	sPage := &stringPage{skey, value, make(chan error, 1)}
-	node.addChan <- sPage
-	return <-sPage.Err
+	already := node.ContextMapper.Add(skey, value)
+	if already != nil {
+		return fmt.Errorf("Key %s already existed", key)
+	}
+	return nil
 }
 
 // Exists method allows to check and return the key.
 func (node *NodeMap) Exists(key string) *Page {
 	skey := httpStrip(key)
-	sPage := &existsPage{key: skey, value: make(chan *Page, 1)}
-	node.checkChan <- sPage
-	return <-sPage.value
+	if page, exists := node.ContextMapper.Exists(skey); exists {
+		retPage, ok := page.(*Page)
+		if ok {
+			return retPage
+		} else {
+			panic("Stored value is not a *Page")
+		}
+	}
+	return nil
 }

@@ -6,6 +6,7 @@ package wire
 
 import (
 	"context"
+	gmap "github.com/ronin13/goimutmap"
 	"net/url"
 )
 
@@ -51,9 +52,7 @@ type existsPage struct {
 // A NodeMap which is protected by RWMutex.
 // Used to ensure we don't process a page twice.
 type NodeMap struct {
-	//pages map[string]*Page - not exposed.
-	addChan   chan *stringPage
-	checkChan chan *existsPage
+	gmap.ContextMapper
 }
 
 // GraphProcessor exposes graph processing interface for
@@ -67,5 +66,4 @@ type GraphProcessor interface {
 type NodeMapper interface {
 	Exists(string) *Page
 	Add(string, *Page) error
-	RunLoop(context.Context)
 }
