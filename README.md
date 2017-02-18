@@ -19,6 +19,7 @@ maintains a map of any static assets from a page.
 Generated graph looks like:
 
 ![wnohang](images/wnohang.png)
+(Click [here](http://files.wnohang.net/files/wnohang.png) to enlarge.)
 
 Algorithm is as follows:
 (Skipping implementation details)
