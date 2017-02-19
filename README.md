@@ -20,6 +20,9 @@ Generated graph looks like:
 
 ![wnohang](images/wnohang.png)
 
+(Note: The documentation below may be slightly dated, refer to [godoc](https://godoc.org/github.com/ronin13/dotler) for 
+latest documentation.)
+
 Algorithm is as follows:
 (Skipping implementation details)
 
